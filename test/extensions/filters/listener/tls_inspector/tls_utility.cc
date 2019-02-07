@@ -11,6 +11,7 @@ namespace Envoy {
 namespace Extensions {
 namespace ListenerFilters {
 namespace TlsInspector {
+namespace Test {
 
 std::vector<uint8_t> generateClientHello(const std::string& sni_name, const std::string& alpn) {
   bssl::UniquePtr<SSL_CTX> ctx(
@@ -44,6 +45,7 @@ std::vector<uint8_t> generateClientHello(const std::string& sni_name, const std:
   return buf;
 }
 
+} // namespace Test
 } // namespace TlsInspector
 } // namespace ListenerFilters
 } // namespace Extensions
