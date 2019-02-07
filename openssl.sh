@@ -111,7 +111,7 @@ def _bssl_wrapper():
     _repository_impl(\"bssl_wrapper\")
     native.bind(
         name = \"bssl_wrapper_lib\",
-        actual = \"@bssl_wrapper//:bssl_wrapper\",
+        actual = \"@bssl_wrapper//:bssl_wrapper_lib\",
     )
 
 #EXTERNAL OPENSSL
@@ -157,6 +157,9 @@ new_local_repository(
     build_file = \"openssl.BUILD\"
 )"
 echo "${OPENSSL_REPO}" >> ${SOURCE_DIR}/WORKSPACE
+
+sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
+
 
 
 
