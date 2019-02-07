@@ -21,6 +21,7 @@ build --cxxopt -Wformat
 build --cxxopt -Wformat-security
 build --cxxopt -Wno-error=old-style-cast
 build --cxxopt -Wno-error=deprecated-declarations
+build --cxxopt -Wno-error=unused-variable
 build --cxxopt -w
 build --cxxopt -ldl
 "

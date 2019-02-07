@@ -19,9 +19,9 @@
 #include "test/mocks/server/mocks.h"
 #include "test/test_common/environment.h"
 #include "test/test_common/simulated_time_system.h"
+#include "test/test_common/test_base.h"
 #include "test/test_common/utility.h"
 
-#include "gtest/gtest.h"
 #include "openssl/x509v3.h"
 
 using Envoy::Protobuf::util::MessageDifferencer;
@@ -107,7 +107,7 @@ TEST_F(SslContextImplTest, TestExpiringCert) {
   MessageUtil::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
 
   ClientContextConfigImpl cfg(tls_context, factory_context_);
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
 
   // This is a total hack, but right now we generate the cert and it expires in 15 days only in the
   // first second that it's valid. This can become invalid and then cause slower tests to fail.
@@ -130,7 +130,7 @@ TEST_F(SslContextImplTest, TestExpiredCert) {
   envoy::api::v2::auth::UpstreamTlsContext tls_context;
   MessageUtil::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
   ClientContextConfigImpl cfg(tls_context, factory_context_);
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
   EXPECT_EQ(0U, context->daysUntilFirstCertExpires());
 }
 
@@ -151,7 +151,7 @@ TEST_F(SslContextImplTest, TestGetCertInformation) {
   MessageUtil::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
   ClientContextConfigImpl cfg(tls_context, factory_context_);
 
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
   // This is similar to the hack above, but right now we generate the ca_cert and it expires in 15
   // days only in the first second that it's valid. We will partially match for up until Days until
   // Expiration: 1.
@@ -201,7 +201,7 @@ TEST_F(SslContextImplTest, TestGetCertInformationWithSAN) {
   MessageUtil::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
   ClientContextConfigImpl cfg(tls_context, factory_context_);
 
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
   std::string ca_cert_json = absl::StrCat(R"EOF({
  "path": "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/san_dns3_cert.pem",
  "serial_number": ")EOF",
@@ -239,11 +239,7 @@ TEST_F(SslContextImplTest, TestGetCertInformationWithSAN) {
 }
 
 std::string convertTimeCertInfoToCertDetails(std::string cert_info_time) {
-  std::tm expiration = TestUtility::parseTimestamp("%b %e %H:%M:%S %Y GMT", cert_info_time);
-  char buffer[21];
-  size_t len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &expiration);
-  ASSERT(len == sizeof(buffer) - 1);
-  return std::string(buffer);
+  return TestUtility::convertTime(cert_info_time, "%b %e %H:%M:%S %Y GMT", "%Y-%m-%dT%H:%M:%SZ");
 }
 
 TEST_F(SslContextImplTest, TestGetCertInformationWithExpiration) {
@@ -263,7 +259,7 @@ TEST_F(SslContextImplTest, TestGetCertInformationWithExpiration) {
   MessageUtil::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
   ClientContextConfigImpl cfg(tls_context, factory_context_);
 
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
   std::string ca_cert_json =
       absl::StrCat(R"EOF({
  "path": "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/san_dns3_cert.pem",
@@ -293,7 +289,7 @@ TEST_F(SslContextImplTest, TestGetCertInformationWithExpiration) {
 TEST_F(SslContextImplTest, TestNoCert) {
   Json::ObjectSharedPtr loader = TestEnvironment::jsonLoadFromString("{}");
   ClientContextConfigImpl cfg(*loader, factory_context_);
-  Envoy::Tls::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
+  Envoy::Ssl::ClientContextSharedPtr context(manager_.createSslClientContext(store_, cfg));
   EXPECT_EQ(nullptr, context->getCaCertInformation());
   EXPECT_TRUE(context->getCertChainInformation().empty());
 }
@@ -347,7 +343,7 @@ TEST_F(SslContextImplTest, AtMostOneEcdsaCert) {
 class SslServerContextImplTicketTest : public SslContextImplTest {
 public:
   void loadConfig(ServerContextConfigImpl& cfg) {
-    Envoy::Tls::ServerContextSharedPtr server_ctx(
+    Envoy::Ssl::ServerContextSharedPtr server_ctx(
         manager_.createSslServerContext(store_, cfg, std::vector<std::string>{}));
   }
 
@@ -1191,7 +1187,7 @@ TEST(ServerContextImplTest, TlsCertificateNonEmpty) {
   ContextManagerImpl manager(time_system);
   Stats::IsolatedStoreImpl store;
   EXPECT_THROW_WITH_MESSAGE(
-      Envoy::Tls::ServerContextSharedPtr server_ctx(
+      Envoy::Ssl::ServerContextSharedPtr server_ctx(
           manager.createSslServerContext(store, client_context_config, std::vector<std::string>{})),
       EnvoyException, "Server TlsCertificates must have a certificate specified");
 }
