@@ -14,7 +14,7 @@
 using testing::NiceMock;
 
 namespace Envoy {
-namespace Tls {
+namespace Ssl {
 
 class SslIntegrationTestBase : public HttpIntegrationTest {
 public:
@@ -50,5 +50,5 @@ public:
   void TearDown() override { SslIntegrationTestBase::TearDown(); };
 };
 
-} // namespace Tls
+} // namespace Ssl
 } // namespace Envoy
