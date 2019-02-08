@@ -5,10 +5,8 @@ TARGET=$2
 
 pushd ${SOURCE_DIR}
   git fetch upstream
-  git fetch origin
   git checkout master
-#  git reset --hard upstream/master
-  git reset --hard origin/common_crypto_openssl
+  git reset --hard upstream/master
 popd
 
 if [ "$TARGET" == "RESET" ]; then
