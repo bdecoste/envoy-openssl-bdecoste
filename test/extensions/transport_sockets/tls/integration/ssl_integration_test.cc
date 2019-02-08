@@ -1,3 +1,4 @@
+
 #include "ssl_integration_test.h"
 
 #include <memory>
@@ -25,7 +26,7 @@
 using testing::Return;
 
 namespace Envoy {
-namespace Ssl {
+namespace Tls {
 
 void SslIntegrationTestBase::initialize() {
   config_helper_.addSslConfig(ConfigHelper::ServerSslOptions()
@@ -36,7 +37,7 @@ void SslIntegrationTestBase::initialize() {
   HttpIntegrationTest::initialize();
 
   context_manager_ =
-      std::make_unique<Extensions::TransportSockets::Tls::ContextManagerImpl>(timeSystem());
+      std::make_unique<Envoy::Extensions::TransportSockets::Tls::ContextManagerImpl>(timeSystem());
 
   registerTestServerPorts({"http"});
 }
@@ -64,7 +65,7 @@ SslIntegrationTestBase::makeSslClientConnection(const ClientSslTransportOptions&
     RELEASE_ASSERT(::system(s_client_cmd.c_str()) == 0, "");
   }
   auto client_transport_socket_factory_ptr =
-      createClientSslTransportSocketFactory(options, *context_manager_, *api_);
+      createClientSslTransportSocketFactory(options, *context_manager_);
   return dispatcher_->createClientConnection(
       address, Network::Address::InstanceConstSharedPtr(),
       client_transport_socket_factory_ptr->createTransportSocket({}), nullptr);
@@ -77,9 +78,9 @@ void SslIntegrationTestBase::checkStats() {
   counter->reset();
 }
 
-INSTANTIATE_TEST_SUITE_P(IpVersions, SslIntegrationTest,
-                         testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
-                         TestUtility::ipTestParamsToString);
+INSTANTIATE_TEST_CASE_P(IpVersions, SslIntegrationTest,
+                        testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
+                        TestUtility::ipTestParamsToString);
 
 TEST_P(SslIntegrationTest, RouterRequestAndResponseWithGiantBodyBuffer) {
   ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
@@ -129,7 +130,7 @@ TEST_P(SslIntegrationTest, RouterHeaderOnlyRequestAndResponse) {
   ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
     return makeSslClientConnection({});
   };
-  testRouterHeaderOnlyRequestAndResponse(&creator);
+  testRouterHeaderOnlyRequestAndResponse(true, &creator);
   checkStats();
 }
 
@@ -175,9 +176,9 @@ TEST_P(SslIntegrationTest, AdminCertEndpoint) {
 
 // Validate certificate selection across different certificate types and client TLS versions.
 class SslCertficateIntegrationTest
-    : public TestBaseWithParam<
-          std::tuple<Network::Address::IpVersion, envoy::api::v2::auth::TlsParameters_TlsProtocol>>,
-      public SslIntegrationTestBase {
+    : public SslIntegrationTestBase,
+      public testing::TestWithParam<std::tuple<Network::Address::IpVersion,
+                                               envoy::api::v2::auth::TlsParameters_TlsProtocol>> {
 public:
   SslCertficateIntegrationTest() : SslIntegrationTestBase(std::get<0>(GetParam())) {
     server_tlsv1_3_ = true;
@@ -210,7 +211,7 @@ public:
   }
 
   static std::string ipClientVersionTestParamsToString(
-      const ::testing::TestParamInfo<
+      const testing::TestParamInfo<
           std::tuple<Network::Address::IpVersion, envoy::api::v2::auth::TlsParameters_TlsProtocol>>&
           params) {
     return fmt::format("{}_TLSv1_{}",
@@ -222,12 +223,28 @@ public:
   const envoy::api::v2::auth::TlsParameters_TlsProtocol tls_version_{std::get<1>(GetParam())};
 };
 
-INSTANTIATE_TEST_SUITE_P(
+class Tlsv1_2CertficateIntegrationTest : public SslCertficateIntegrationTest {};
+
+class Tlsv1_3CertficateIntegrationTest : public SslCertficateIntegrationTest {};
+
+INSTANTIATE_TEST_CASE_P(
     IpVersionsClientVersions, SslCertficateIntegrationTest,
     testing::Combine(testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
                      testing::Values(envoy::api::v2::auth::TlsParameters::TLSv1_2,
                                      envoy::api::v2::auth::TlsParameters::TLSv1_3)),
     SslCertficateIntegrationTest::ipClientVersionTestParamsToString);
+
+INSTANTIATE_TEST_CASE_P(
+    IpVersionsClientVersions, Tlsv1_2CertficateIntegrationTest,
+    testing::Combine(testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
+                     testing::Values(envoy::api::v2::auth::TlsParameters::TLSv1_2)),
+    Tlsv1_2CertficateIntegrationTest::ipClientVersionTestParamsToString);
+
+INSTANTIATE_TEST_CASE_P(
+    IpVersionsClientVersions, Tlsv1_3CertficateIntegrationTest,
+    testing::Combine(testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
+                     testing::Values(envoy::api::v2::auth::TlsParameters::TLSv1_3)),
+    Tlsv1_3CertficateIntegrationTest::ipClientVersionTestParamsToString);
 
 // Server with an RSA certificate and a client with RSA/ECDSA cipher suites works.
 TEST_P(SslCertficateIntegrationTest, ServerRsa) {
@@ -274,17 +291,22 @@ TEST_P(SslCertficateIntegrationTest, ClientRsaOnly) {
 }
 
 // Server has only an ECDSA certificate, client is only RSA capable, leads to a connection fail.
-TEST_P(SslCertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
+TEST_P(Tlsv1_2CertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
   server_rsa_cert_ = false;
   server_ecdsa_cert_ = true;
   initialize();
   auto codec_client = makeRawHttpConnection(makeSslClientConnection(rsaOnlyClientOptions()));
-  EXPECT_FALSE(codec_client->connected());
-  const std::string counter_name = listenerStatPrefix("ssl.connection_error");
-  Stats::CounterSharedPtr counter = test_server_->counter(counter_name);
-  test_server_->waitForCounterGe(counter_name, 1);
-  EXPECT_EQ(1U, counter->value());
-  counter->reset();
+}
+
+TEST_P(Tlsv1_3CertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
+  EXPECT_DEATH(
+      {
+        server_rsa_cert_ = false;
+        server_ecdsa_cert_ = true;
+        initialize();
+        auto codec_client = makeRawHttpConnection(makeSslClientConnection(rsaOnlyClientOptions()));
+      },
+      "ConnectionImpl was unexpectedly torn down without being closed");
 }
 
 // Server with RSA/ECDSA certificates and a client with only RSA cipher suites works.
@@ -299,18 +321,34 @@ TEST_P(SslCertficateIntegrationTest, ServerRsaEcdsaClientRsaOnly) {
 }
 
 // Server has only an RSA certificate, client is only ECDSA capable, leads to connection fail.
-TEST_P(SslCertficateIntegrationTest, ServerRsaClientEcdsaOnly) {
+TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaClientEcdsaOnly) {
   server_rsa_cert_ = true;
   server_ecdsa_cert_ = false;
   client_ecdsa_cert_ = true;
   initialize();
   EXPECT_FALSE(
       makeRawHttpConnection(makeSslClientConnection(ecdsaOnlyClientOptions()))->connected());
-  const std::string counter_name = listenerStatPrefix("ssl.connection_error");
-  Stats::CounterSharedPtr counter = test_server_->counter(counter_name);
-  test_server_->waitForCounterGe(counter_name, 1);
+  Stats::CounterSharedPtr counter =
+      test_server_->counter(listenerStatPrefix("ssl.connection_error"));
   EXPECT_EQ(1U, counter->value());
   counter->reset();
+}
+
+TEST_P(Tlsv1_3CertficateIntegrationTest, ServerRsaClientEcdsaOnly) {
+  EXPECT_DEATH(
+      {
+        server_rsa_cert_ = true;
+        server_ecdsa_cert_ = false;
+        client_ecdsa_cert_ = true;
+        initialize();
+        EXPECT_FALSE(
+            makeRawHttpConnection(makeSslClientConnection(ecdsaOnlyClientOptions()))->connected());
+        Stats::CounterSharedPtr counter =
+            test_server_->counter(listenerStatPrefix("ssl.connection_error"));
+        EXPECT_EQ(1U, counter->value());
+        counter->reset();
+      },
+      "ConnectionImpl was unexpectedly torn down without being closed");
 }
 
 // Server has only an ECDSA certificate, client is only ECDSA capable works.
@@ -326,7 +364,22 @@ TEST_P(SslCertficateIntegrationTest, ServerEcdsaClientEcdsaOnly) {
 }
 
 // Server has RSA/ECDSA certificates, client is only ECDSA capable works.
-TEST_P(SslCertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
+TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
+  EXPECT_DEATH(
+      {
+        server_rsa_cert_ = true;
+        server_ecdsa_cert_ = true;
+        client_ecdsa_cert_ = true;
+        ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
+          return makeSslClientConnection(ecdsaOnlyClientOptions());
+        };
+        testRouterRequestAndResponseWithBody(1024, 512, false, &creator);
+        checkStats();
+      },
+      "ConnectionImpl file event was unexpectedly null");
+}
+
+TEST_P(Tlsv1_3CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
   server_rsa_cert_ = true;
   server_ecdsa_cert_ = true;
   client_ecdsa_cert_ = true;
@@ -337,12 +390,9 @@ TEST_P(SslCertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
   checkStats();
 }
 
-// TODO(mattklein123): Move this into a dedicated integration test for the tap transport socket as
-// well as add more tests.
-class SslTapIntegrationTest : public SslIntegrationTest {
+class SslCaptureIntegrationTest : public SslIntegrationTest {
 public:
   void initialize() override {
-    // TODO(mattklein123): Merge/use the code in ConfigHelper::setTapTransportSocket().
     config_helper_.addConfigModifier([this](envoy::config::bootstrap::v2::Bootstrap& bootstrap) {
       auto* filter_chain =
           bootstrap.mutable_static_resources()->mutable_listeners(0)->mutable_filter_chains(0);
@@ -350,26 +400,17 @@ public:
       envoy::api::v2::core::TransportSocket ssl_transport_socket;
       ssl_transport_socket.set_name("tls");
       MessageUtil::jsonConvert(filter_chain->tls_context(), *ssl_transport_socket.mutable_config());
-      // Configure outer tap transport socket.
+      // Configure outer capture transport socket.
       auto* transport_socket = filter_chain->mutable_transport_socket();
-      transport_socket->set_name("envoy.transport_sockets.tap");
-      envoy::config::transport_socket::tap::v2alpha::Tap tap_config;
-      tap_config.mutable_common_config()
-          ->mutable_static_config()
-          ->mutable_match_config()
-          ->set_any_match(true);
-      auto* file_sink = tap_config.mutable_common_config()
-                            ->mutable_static_config()
-                            ->mutable_output_config()
-                            ->mutable_sinks()
-                            ->Add()
-                            ->mutable_file_per_tap();
+      transport_socket->set_name("envoy.transport_sockets.capture");
+      envoy::config::transport_socket::capture::v2alpha::Capture capture_config;
+      auto* file_sink = capture_config.mutable_file_sink();
       file_sink->set_path_prefix(path_prefix_);
-      file_sink->set_format(text_format_
-                                ? envoy::service::tap::v2alpha::FilePerTapSink::PROTO_TEXT
-                                : envoy::service::tap::v2alpha::FilePerTapSink::PROTO_BINARY);
-      tap_config.mutable_transport_socket()->MergeFrom(ssl_transport_socket);
-      MessageUtil::jsonConvert(tap_config, *transport_socket->mutable_config());
+      file_sink->set_format(
+          text_format_ ? envoy::config::transport_socket::capture::v2alpha::FileSink::PROTO_TEXT
+                       : envoy::config::transport_socket::capture::v2alpha::FileSink::PROTO_BINARY);
+      capture_config.mutable_transport_socket()->MergeFrom(ssl_transport_socket);
+      MessageUtil::jsonConvert(capture_config, *transport_socket->mutable_config());
       // Nuke TLS context from legacy location.
       filter_chain->clear_tls_context();
       // Rest of TLS initialization.
@@ -383,12 +424,12 @@ public:
   bool text_format_{};
 };
 
-INSTANTIATE_TEST_SUITE_P(IpVersions, SslTapIntegrationTest,
-                         testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
-                         TestUtility::ipTestParamsToString);
+INSTANTIATE_TEST_CASE_P(IpVersions, SslCaptureIntegrationTest,
+                        testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
+                        TestUtility::ipTestParamsToString);
 
 // Validate two back-to-back requests with binary proto output.
-TEST_P(SslTapIntegrationTest, TwoRequestsWithBinaryProto) {
+TEST_P(SslCaptureIntegrationTest, TwoRequestsWithBinaryProto) {
   initialize();
   ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
     return makeSslClientConnection({});
@@ -416,19 +457,15 @@ TEST_P(SslTapIntegrationTest, TwoRequestsWithBinaryProto) {
                                              expected_remote_address);
   codec_client_->close();
   test_server_->waitForCounterGe("http.config_test.downstream_cx_destroy", 1);
-  envoy::data::tap::v2alpha::BufferedTraceWrapper trace;
-  MessageUtil::loadFromFile(fmt::format("{}_{}.pb", path_prefix_, first_id), trace, *api_);
+  envoy::data::tap::v2alpha::Trace trace;
+  MessageUtil::loadFromFile(fmt::format("{}_{}.pb", path_prefix_, first_id), trace);
   // Validate general expected properties in the trace.
-  EXPECT_EQ(first_id, trace.socket_buffered_trace().connection().id());
-  EXPECT_THAT(expected_local_address,
-              ProtoEq(trace.socket_buffered_trace().connection().local_address()));
-  EXPECT_THAT(expected_remote_address,
-              ProtoEq(trace.socket_buffered_trace().connection().remote_address()));
-  ASSERT_GE(trace.socket_buffered_trace().events().size(), 2);
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
-                               "POST /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_EQ(first_id, trace.connection().id());
+  EXPECT_THAT(expected_local_address, ProtoEq(trace.connection().local_address()));
+  EXPECT_THAT(expected_remote_address, ProtoEq(trace.connection().remote_address()));
+  ASSERT_GE(trace.events().size(), 2);
+  EXPECT_TRUE(absl::StartsWith(trace.events(0).read().data(), "POST /test/long/url HTTP/1.1"));
+  EXPECT_TRUE(absl::StartsWith(trace.events(1).write().data(), "HTTP/1.1 200 OK"));
 
   // Verify a second request hits a different file.
   const uint64_t second_id = Network::ConnectionImpl::nextGlobalIdForTest() + 1;
@@ -446,18 +483,16 @@ TEST_P(SslTapIntegrationTest, TwoRequestsWithBinaryProto) {
   checkStats();
   codec_client_->close();
   test_server_->waitForCounterGe("http.config_test.downstream_cx_destroy", 2);
-  MessageUtil::loadFromFile(fmt::format("{}_{}.pb", path_prefix_, second_id), trace, *api_);
+  MessageUtil::loadFromFile(fmt::format("{}_{}.pb", path_prefix_, second_id), trace);
   // Validate second connection ID.
-  EXPECT_EQ(second_id, trace.socket_buffered_trace().connection().id());
-  ASSERT_GE(trace.socket_buffered_trace().events().size(), 2);
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
-                               "GET /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_EQ(second_id, trace.connection().id());
+  ASSERT_GE(trace.events().size(), 2);
+  EXPECT_TRUE(absl::StartsWith(trace.events(0).read().data(), "GET /test/long/url HTTP/1.1"));
+  EXPECT_TRUE(absl::StartsWith(trace.events(1).write().data(), "HTTP/1.1 200 OK"));
 }
 
 // Validate a single request with text proto output.
-TEST_P(SslTapIntegrationTest, RequestWithTextProto) {
+TEST_P(SslCaptureIntegrationTest, RequestWithTextProto) {
   text_format_ = true;
   ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
     return makeSslClientConnection({});
@@ -467,14 +502,12 @@ TEST_P(SslTapIntegrationTest, RequestWithTextProto) {
   checkStats();
   codec_client_->close();
   test_server_->waitForCounterGe("http.config_test.downstream_cx_destroy", 1);
-  envoy::data::tap::v2alpha::BufferedTraceWrapper trace;
-  MessageUtil::loadFromFile(fmt::format("{}_{}.pb_text", path_prefix_, id), trace, *api_);
+  envoy::data::tap::v2alpha::Trace trace;
+  MessageUtil::loadFromFile(fmt::format("{}_{}.pb_text", path_prefix_, id), trace);
   // Test some obvious properties.
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
-                               "POST /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_TRUE(absl::StartsWith(trace.events(0).read().data(), "POST /test/long/url HTTP/1.1"));
+  EXPECT_TRUE(absl::StartsWith(trace.events(1).write().data(), "HTTP/1.1 200 OK"));
 }
 
-} // namespace Ssl
+} // namespace Tls
 } // namespace Envoy

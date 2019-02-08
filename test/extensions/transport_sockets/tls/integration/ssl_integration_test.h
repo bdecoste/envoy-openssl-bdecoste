@@ -14,7 +14,7 @@
 using testing::NiceMock;
 
 namespace Envoy {
-namespace Ssl {
+namespace Tls {
 
 class SslIntegrationTestBase : public HttpIntegrationTest {
 public:
@@ -43,12 +43,12 @@ private:
   std::unique_ptr<ContextManager> context_manager_;
 };
 
-class SslIntegrationTest : public TestBaseWithParam<Network::Address::IpVersion>,
-                           public SslIntegrationTestBase {
+class SslIntegrationTest : public SslIntegrationTestBase,
+                           public testing::TestWithParam<Network::Address::IpVersion> {
 public:
   SslIntegrationTest() : SslIntegrationTestBase(GetParam()) {}
   void TearDown() override { SslIntegrationTestBase::TearDown(); };
 };
 
-} // namespace Ssl
+} // namespace Tls
 } // namespace Envoy
