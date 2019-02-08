@@ -376,7 +376,7 @@ TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
         testRouterRequestAndResponseWithBody(1024, 512, false, &creator);
         checkStats();
       },
-      "ConnectionImpl file event was unexpectedly null");
+      "ConnectionImpl file event was unexpectedly reset");
 }
 
 TEST_P(Tlsv1_3CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
