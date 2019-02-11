@@ -33,7 +33,6 @@ int alpnSelectCallback(std::vector<uint8_t> parsed_alpn_protocols, const unsigne
 }
 
 auto select_client_cert_cb = +[](SSL* ssl, X509** x509, EVP_PKEY** pkey) -> int {
-  std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!! select_client_cert_cb \n";
   return 0;
 };
 
