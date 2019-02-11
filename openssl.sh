@@ -5,8 +5,10 @@ TARGET=$2
 
 pushd ${SOURCE_DIR}
   git fetch upstream
-  git checkout master
-  git reset --hard upstream/master
+#  git checkout master
+#  git reset --hard upstream/master
+  git checkout envoy_for_proxy
+  git reset --hard b3be5713f2100ab5c40316e73ce34581245bd26a
 popd
 
 if [ "$TARGET" == "RESET" ]; then
