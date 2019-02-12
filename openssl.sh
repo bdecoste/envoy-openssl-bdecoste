@@ -84,17 +84,17 @@ START_OFFSET="0"
 ADD_TEXT=""
 replace_text
 
-FILE="bazel/repository_locations.bzl"
-DELETE_START_PATTERN="com_github_google_jwt_verify = dict("
-DELETE_STOP_PATTERN="),"
-START_OFFSET="0"
-ADD_TEXT="    # EXTERNAL OPENSSL
-    com_github_google_jwt_verify = dict(
-        sha256 = \"40808d3a1cacdfc9827cc7d380386a69585c6b24bed82daa54918b176a2fde41\",
-        strip_prefix = \"jwt_verify_lib-c3c4cbd5762b5da01ffc059262be38413311d070\",
-        urls = [\"https://github.com/bdecoste/jwt_verify_lib/archive/c3c4cbd5762b5da01ffc059262be38413311d070.tar.gz\"],
-    ),"
-replace_text
+#FILE="bazel/repository_locations.bzl"
+#DELETE_START_PATTERN="com_github_google_jwt_verify = dict("
+#DELETE_STOP_PATTERN="),"
+#START_OFFSET="0"
+#ADD_TEXT="    # EXTERNAL OPENSSL
+#    com_github_google_jwt_verify = dict(
+#        sha256 = \"40808d3a1cacdfc9827cc7d380386a69585c6b24bed82daa54918b176a2fde41\",
+#        strip_prefix = \"jwt_verify_lib-c3c4cbd5762b5da01ffc059262be38413311d070\",
+#        urls = [\"https://github.com/bdecoste/jwt_verify_lib/archive/c3c4cbd5762b5da01ffc059262be38413311d070.tar.gz\"],
+#    ),"
+#replace_text
 
 FILE="bazel/repositories.bzl"
 DELETE_START_PATTERN="def _boringssl():"
