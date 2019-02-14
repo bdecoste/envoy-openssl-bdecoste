@@ -73,9 +73,9 @@ ADD_TEXT="    #EXTERNAL OPENSSL
     ),
     #EXTERNAL OPENSSL
     openssl_cbs = dict(
-        sha256 = \"44453d398994a8d8fa540b2ffb5bbbb0a414c030236197e224ee6298adb53bdb\",
-        strip_prefix = \"openssl-cbs-563fe95a2d5690934f903d9ebb3d9bbae40fc93f\",
-        urls = [\"https://github.com/bdecoste/openssl-cbs/archive/563fe95a2d5690934f903d9ebb3d9bbae40fc93f.tar.gz\"],
+        strip_prefix = \"openssl-cbs-c81c75e7ec037605ef9b10587f6a59ba584a1b84\",
+        urls = [\"https://github.com/bdecoste/openssl-cbs/archive/c81c75e7ec037605ef9b10587f6a59ba584a1b84.tar.gz\"],
+        sha256 = \"ebe7aca5c1068358b854d1be684d087f29a09832e67ae207f4539b7d261ae9d2\",
     ),"
 replace_text
 
@@ -93,9 +93,9 @@ if [ "$UPDATE_JWT" == "true" ]; then
   START_OFFSET="0"
   ADD_TEXT="    # EXTERNAL OPENSSL
     com_github_google_jwt_verify = dict(
-        sha256 = \"bc5a7954a985b23bf5ed31527764572562f3b92476a5f0e296a3c07d0e93f903\",
-        strip_prefix = \"jwt_verify_lib-389bfdceef7e79b05315c83b5e7cab37728e2e5b\",
-        urls = [\"https://github.com/bdecoste/jwt_verify_lib/archive/389bfdceef7e79b05315c83b5e7cab37728e2e5b.tar.gz\"],
+        sha256 = \"b42c1809576c800a44a2715fb500b70422c7067d890cb2de4ec6b8a11806f5e2\",
+        strip_prefix = \"jwt_verify_lib-b3e37f05ecf3590ac95f889e2dc8f64029718e5b\",
+        urls = [\"https://github.com/bdecoste/jwt_verify_lib/archive/b3e37f05ecf3590ac95f889e2dc8f64029718e5b.tar.gz\"],
     ),"
   replace_text
 fi
@@ -164,6 +164,17 @@ new_local_repository(
 echo "${OPENSSL_REPO}" >> ${SOURCE_DIR}/WORKSPACE
 
 sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
+
+sed -i 's|#include "openssl/base.h"|#include "opensslcbs/cbs.h"|g' ${SOURCE_DIR}/source/extensions/quic_listeners/quiche/platform/quic_cert_utils_impl.h
+sed -i 's|#include "openssl/bytestring.h"|#include "opensslcbs/cbs.h"|g' ${SOURCE_DIR}/source/extensions/quic_listeners/quiche/platform/quic_cert_utils_impl.cc
+
+FILE="source/extensions/quic_listeners/quiche/platform/BUILD"
+DELETE_START_PATTERN="\"quiche_quic_platform_base\","
+DELETE_STOP_PATTERN=""
+START_OFFSET="0"
+ADD_TEXT="        \"quiche_quic_platform_base\",
+        \"openssl_cbs_lib\","
+replace_text
 
 
 
