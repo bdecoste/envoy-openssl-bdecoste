@@ -7,7 +7,7 @@ if [ "${GIT_RESET}" == "true" ]; then
   pushd ${SOURCE_DIR}
     git fetch upstream
     git checkout master
-    git reset --hard upstream/master
+    git reset --hard 925810d00b0d3095a8e67fd4e04e0f597ed188bb #upstream/master
   popd
 fi
 
@@ -37,12 +37,13 @@ rm -rf ${SOURCE_DIR}/source/extensions/transport_sockets/tls
 rm -rf ${SOURCE_DIR}/source/extensions/filters/listener/tls_inspector
 rm -rf ${SOURCE_DIR}/test/extensions/transport_sockets/tls
 rm -rf ${SOURCE_DIR}/test/extensions/filters/listener/tls_inspector
-cp -rf source/extensions/transport_sockets/tls ${SOURCE_DIR}/source/extensions/transport_sockets/
-cp -rf source/extensions/filters/listener/tls_inspector ${SOURCE_DIR}/source/extensions/filters/listener/
-cp -rf test/extensions/transport_sockets/tls ${SOURCE_DIR}/test/extensions/transport_sockets/
-cp -rf test/extensions/filters/listener/tls_inspector ${SOURCE_DIR}/test/extensions/filters/listener/
+/usr/bin/cp -rf source/extensions/transport_sockets/tls ${SOURCE_DIR}/source/extensions/transport_sockets/
+/usr/bin/cp -rf source/extensions/filters/listener/tls_inspector ${SOURCE_DIR}/source/extensions/filters/listener/
+/usr/bin/cp -rf test/extensions/transport_sockets/tls ${SOURCE_DIR}/test/extensions/transport_sockets/
+/usr/bin/cp -rf test/extensions/filters/listener/tls_inspector ${SOURCE_DIR}/test/extensions/filters/listener/
+/usr/bin/cp -rf source/common/network/connection_impl.cc ${SOURCE_DIR}/source/common/network
 
-cp openssl.BUILD ${SOURCE_DIR}
+/usr/bin/cp openssl.BUILD ${SOURCE_DIR}
 
 function replace_text() {
   START=$(grep -nr "${DELETE_START_PATTERN}" ${SOURCE_DIR}/${FILE} | cut -d':' -f1)
