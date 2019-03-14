@@ -73,15 +73,13 @@ ConnectionImpl::~ConnectionImpl() {
   ASSERT(ioHandle().fd() == -1 && delayed_close_timer_ == nullptr,
          "ConnectionImpl was unexpectedly torn down without being closed.");
 
-  if (ioHandle().fd() != -1 || delayed_close_timer_ != nullptr ) {
-    throw EnvoyException("ConnectionImpl was unexpectedly torn down without being closed.");
-  }
-
   // In general we assume that owning code has called close() previously to the destructor being
   // run. This generally must be done so that callbacks run in the correct context (vs. deferred
   // deletion). Hence the assert above. However, call close() here just to be completely sure that
   // the fd is closed and make it more likely that we crash from a bad close callback.
-  close(ConnectionCloseType::NoFlush);
+  if (ioHandle().fd() == -1 && delayed_close_timer_ == nullptr) {
+    close(ConnectionCloseType::NoFlush);
+  }
 }
 
 void ConnectionImpl::addWriteFilter(WriteFilterSharedPtr filter) {

@@ -299,6 +299,13 @@ TEST_P(Tlsv1_2CertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
 }
 
 TEST_P(Tlsv1_3CertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
+#ifdef NDEBUG
+  server_rsa_cert_ = false;
+  server_ecdsa_cert_ = true;
+  initialize();
+
+  auto codec_client = makeRawHttpConnection(makeSslClientConnection(rsaOnlyClientOptions()));
+#else
   EXPECT_DEATH(
       {
         server_rsa_cert_ = false;
@@ -307,6 +314,7 @@ TEST_P(Tlsv1_3CertficateIntegrationTest, ServerEcdsaClientRsaOnly) {
         auto codec_client = makeRawHttpConnection(makeSslClientConnection(rsaOnlyClientOptions()));
       },
       "ConnectionImpl was unexpectedly torn down without being closed");
+#endif
 }
 
 // Server with RSA/ECDSA certificates and a client with only RSA cipher suites works.
@@ -335,20 +343,32 @@ TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaClientEcdsaOnly) {
 }
 
 TEST_P(Tlsv1_3CertficateIntegrationTest, ServerRsaClientEcdsaOnly) {
+#ifdef NDEBUG
+  server_rsa_cert_ = true;
+  server_ecdsa_cert_ = false;
+  client_ecdsa_cert_ = true;
+  initialize();
+  EXPECT_TRUE(
+	makeRawHttpConnection(makeSslClientConnection(ecdsaOnlyClientOptions()))->connected());
+  Stats::CounterSharedPtr counter = test_server_->counter(listenerStatPrefix("ssl.connection_error"));
+  EXPECT_EQ(0U, counter->value());
+  counter->reset();
+#else
   EXPECT_DEATH(
-      {
-        server_rsa_cert_ = true;
-        server_ecdsa_cert_ = false;
-        client_ecdsa_cert_ = true;
-        initialize();
-        EXPECT_FALSE(
-            makeRawHttpConnection(makeSslClientConnection(ecdsaOnlyClientOptions()))->connected());
-        Stats::CounterSharedPtr counter =
-            test_server_->counter(listenerStatPrefix("ssl.connection_error"));
-        EXPECT_EQ(1U, counter->value());
-        counter->reset();
-      },
-      "ConnectionImpl was unexpectedly torn down without being closed");
+	{
+	  server_rsa_cert_ = true;
+	  server_ecdsa_cert_ = false;
+	  client_ecdsa_cert_ = true;
+	  initialize();
+	  EXPECT_FALSE(
+		  makeRawHttpConnection(makeSslClientConnection(ecdsaOnlyClientOptions()))->connected());
+	  Stats::CounterSharedPtr counter =
+		  test_server_->counter(listenerStatPrefix("ssl.connection_error"));
+	  EXPECT_EQ(1U, counter->value());
+	  counter->reset();
+	},
+  "ConnectionImpl was unexpectedly torn down without being closed");
+#endif
 }
 
 // Server has only an ECDSA certificate, client is only ECDSA capable works.
@@ -365,7 +385,16 @@ TEST_P(SslCertficateIntegrationTest, ServerEcdsaClientEcdsaOnly) {
 
 // Server has RSA/ECDSA certificates, client is only ECDSA capable works.
 TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
-  EXPECT_DEATH(
+#ifdef NDEBUG
+	server_rsa_cert_ = true;
+	server_ecdsa_cert_ = true;
+	client_ecdsa_cert_ = true;
+	ConnectionCreationFunction creator = [&]() -> Network::ClientConnectionPtr {
+	  Network::ClientConnectionPtr connection = makeSslClientConnection(ecdsaOnlyClientOptions());
+	  EXPECT_FALSE(connection);
+	};
+#else
+	EXPECT_DEATH(
       {
         server_rsa_cert_ = true;
         server_ecdsa_cert_ = true;
@@ -377,6 +406,7 @@ TEST_P(Tlsv1_2CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
         checkStats();
       },
       "ConnectionImpl file event was unexpectedly reset");
+#endif
 }
 
 TEST_P(Tlsv1_3CertficateIntegrationTest, ServerRsaEcdsaClientEcdsaOnly) {
