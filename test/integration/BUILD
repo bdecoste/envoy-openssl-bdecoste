@@ -464,19 +464,19 @@ envoy_cc_test(
     ],
 )
 
-envoy_cc_test(
-    name = "ratelimit_integration_test",
-    srcs = ["ratelimit_integration_test.cc"],
-    deps = [
-        ":http_integration_lib",
-        "//source/common/buffer:zero_copy_input_stream_lib",
-        "//source/common/grpc:codec_lib",
-        "//source/common/grpc:common_lib",
-        "//source/extensions/filters/http/ratelimit:config",
-        "//test/common/grpc:grpc_client_integration_lib",
-        "@envoy_api//envoy/service/ratelimit/v2:rls_cc",
-    ],
-)
+#envoy_cc_test(
+#    name = "ratelimit_integration_test",
+#    srcs = ["ratelimit_integration_test.cc"],
+#    deps = [
+#        ":http_integration_lib",
+#        "//source/common/buffer:zero_copy_input_stream_lib",
+#        "//source/common/grpc:codec_lib",
+#        "//source/common/grpc:common_lib",
+#        "//source/extensions/filters/http/ratelimit:config",
+#        "//test/common/grpc:grpc_client_integration_lib",
+#        "@envoy_api//envoy/service/ratelimit/v2:rls_cc",
+#    ],
+#)
 
 envoy_cc_test_library(
     name = "server_stats_interface",
