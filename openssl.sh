@@ -166,7 +166,7 @@ new_local_repository(
 )"
 echo "${OPENSSL_REPO}" >> ${SOURCE_DIR}/WORKSPACE
 
-#sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
+sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
 
 
 
