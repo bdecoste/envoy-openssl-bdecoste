@@ -76,9 +76,9 @@ ADD_TEXT="    #EXTERNAL OPENSSL
     ),
     #EXTERNAL OPENSSL
     openssl_cbs = dict(
-        sha256 = \"44453d398994a8d8fa540b2ffb5bbbb0a414c030236197e224ee6298adb53bdb\",
-        strip_prefix = \"openssl-cbs-563fe95a2d5690934f903d9ebb3d9bbae40fc93f\",
-        urls = [\"https://github.com/bdecoste/openssl-cbs/archive/563fe95a2d5690934f903d9ebb3d9bbae40fc93f.tar.gz\"],
+        sha256 = \"682138dcf3f747811f21448579b502f8c7c6168316a2fad408863b4692e4ccf9\",
+        strip_prefix = \"openssl-cbs-bc89423efd78098d411821b40aed7644748f841b\",
+        urls = [\"https://github.com/bdecoste/openssl-cbs/archive/bc89423efd78098d411821b40aed7644748f841b.tar.gz\"],
     ),"
 replace_text
 
