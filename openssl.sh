@@ -7,7 +7,7 @@ if [ "${GIT_RESET}" == "true" ]; then
   pushd ${SOURCE_DIR}
     git fetch upstream
     git checkout master
-    git reset --hard 925810d00b0d3095a8e67fd4e04e0f597ed188bb #upstream/master
+    git reset --hard 8912fa36acdf4367d37998d98cead376762d2b49 #upstream/master
   popd
 fi
 
@@ -166,7 +166,7 @@ new_local_repository(
 )"
 echo "${OPENSSL_REPO}" >> ${SOURCE_DIR}/WORKSPACE
 
-sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
+#sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
 
 
 
