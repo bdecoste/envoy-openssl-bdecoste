@@ -168,6 +168,9 @@ echo "${OPENSSL_REPO}" >> ${SOURCE_DIR}/WORKSPACE
 
 sed -i 's|go_register_toolchains(go_version = GO_VERSION)|go_register_toolchains(go_version = "host")|g' ${SOURCE_DIR}/WORKSPACE
 
+sed -i 's|#include "openssl/base.h"||g' ${SOURCE_DIR}/source/extensions/quic_listeners/quiche/platform/quic_cert_utils_impl.h
+sed -i 's|#include "openssl/bytestring.h"||g' ${SOURCE_DIR}/source/extensions/quic_listeners/quiche/platform/quic_cert_utils_impl.cc
+
 
 
 
