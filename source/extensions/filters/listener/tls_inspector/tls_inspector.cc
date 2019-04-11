@@ -29,7 +29,7 @@ Config::Config(Stats::Scope& scope, uint32_t max_client_hello_size)
       ssl_ctx_(
           SSL_CTX_new(Envoy::Extensions::ListenerFilters::TlsInspector::TLS_with_buffers_method())),
       max_client_hello_size_(max_client_hello_size) {
-
+std::cerr << "!!!!!!!!!!!!!!!!! Config::Config \n";
   if (max_client_hello_size_ > TLS_MAX_CLIENT_HELLO) {
     throw EnvoyException(fmt::format("max_client_hello_size of {} is greater than maximum of {}.",
                                      max_client_hello_size_, size_t(TLS_MAX_CLIENT_HELLO)));
@@ -71,7 +71,7 @@ Filter::Filter(const ConfigSharedPtr config) : config_(config), ssl_(config_->ne
 }
 
 Network::FilterStatus Filter::onAccept(Network::ListenerFilterCallbacks& cb) {
-  std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onAccept \n";
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onAccept \n";
   ENVOY_LOG(debug, "tls inspector: new connection accepted");
   Network::ConnectionSocket& socket = cb.socket();
   ASSERT(file_event_ == nullptr);
@@ -90,20 +90,12 @@ Network::FilterStatus Filter::onAccept(Network::ListenerFilterCallbacks& cb) {
       },
       Event::FileTriggerType::Edge, Event::FileReadyType::Read | Event::FileReadyType::Closed);
 
-  ASSERT(file_event_ != nullptr);
-
-  // TODO(PiotrSikora): make this configurable.
-  timer_ = cb.dispatcher().createTimer([this]() -> void { onTimeout(); });
-  timer_->enableTimer(std::chrono::milliseconds(15000));
-
-  // TODO(ggreenway): Move timeout and close-detection to the filter manager
-  // so that it applies to all listener filters.
-
   cb_ = &cb;
   return Network::FilterStatus::StopIteration;
 }
 
 void Filter::onALPN(const unsigned char* data, unsigned int len) {
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onALPN \n";
   std::vector<absl::string_view> protocols =
       Envoy::Extensions::ListenerFilters::TlsInspector::getAlpnProtocols(data, len);
   cb_->socket().setRequestedApplicationProtocols(protocols);
@@ -111,6 +103,7 @@ void Filter::onALPN(const unsigned char* data, unsigned int len) {
 }
 
 void Filter::onServername(absl::string_view name) {
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onServername " << name << " \n";	
   if (!name.empty()) {
     config_->stats().sni_found_.inc();
     cb_->socket().setRequestedServerName(name);
@@ -122,6 +115,8 @@ void Filter::onServername(absl::string_view name) {
 }
 
 void Filter::onRead() {
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onRead \n";
+	
   // This receive code is somewhat complicated, because it must be done as a MSG_PEEK because
   // there is no way for a listener-filter to pass payload data to the ConnectionImpl and filters
   // that get created later.
@@ -157,20 +152,15 @@ void Filter::onRead() {
   }
 }
 
-void Filter::onTimeout() {
-  ENVOY_LOG(trace, "tls inspector: timeout");
-  config_->stats().read_timeout_.inc();
-  done(false);
-}
-
 void Filter::done(bool success) {
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector done \n";	
   ENVOY_LOG(trace, "tls inspector: done: {}", success);
-  timer_.reset();
   file_event_.reset();
-  cb_->continueFilterChain(success);
+  cb_->continueFilterChain(success); 
 }
 
 void Filter::parseClientHello(const void* data, size_t len) {
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector parseClientHello \n";	
   // Ownership is passed to ssl_ in SSL_set_bio()
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(data, len));
 
@@ -187,6 +177,7 @@ void Filter::parseClientHello(const void* data, size_t len) {
   ASSERT(ret <= 0);
   switch (SSL_get_error(ssl_.get(), ret)) {
   case SSL_ERROR_WANT_READ:
+std::cerr << "!!!!!!!!!!!!!! SSL_ERROR_WANT_READ \n";
     if (read_ == config_->maxClientHelloSize()) {
       // We've hit the specified size limit. This is an unreasonably large ClientHello;
       // indicate failure.
@@ -195,6 +186,7 @@ void Filter::parseClientHello(const void* data, size_t len) {
     }
     break;
   case SSL_ERROR_SSL:
+std::cerr << "!!!!!!!!!!!!!! SSL_ERROR_SSL " << clienthello_success_ << " \n";    
     if (clienthello_success_) {
       config_->stats().tls_found_.inc();
       if (alpn_found_) {
@@ -209,6 +201,7 @@ void Filter::parseClientHello(const void* data, size_t len) {
     done(true);
     break;
   default:
+std::cerr << "!!!!!!!!!!!!!!!!!!!! default err \n";    
     done(false);
     break;
   }
