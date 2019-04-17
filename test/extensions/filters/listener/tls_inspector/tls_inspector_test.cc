@@ -101,7 +101,8 @@ TEST_F(TlsInspectorTest, SniRegistered) {
             return Api::SysCallSizeResult{ssize_t(client_hello.size()), 0};
           }));
   EXPECT_CALL(socket_, setRequestedServerName(Eq(servername)));
-  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(0);
+// Not valid for ALPN "istio" application protocol hack for openssl
+  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(1);
   EXPECT_CALL(socket_, setDetectedTransportProtocol(absl::string_view("tls")));
   EXPECT_CALL(cb_, continueFilterChain(true));
   file_event_callback_(Event::FileReadyType::Read);
@@ -126,7 +127,9 @@ TEST_F(TlsInspectorTest, AlpnRegistered) {
             return Api::SysCallSizeResult{ssize_t(client_hello.size()), 0};
           }));
   EXPECT_CALL(socket_, setRequestedServerName(_)).Times(0);
-  EXPECT_CALL(socket_, setRequestedApplicationProtocols(alpn_protos));
+// Not valid for ALPN "istio" application protocol hack for openssl
+  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(2);
+//  EXPECT_CALL(socket_, setRequestedApplicationProtocols(alpn_protos));
   EXPECT_CALL(socket_, setDetectedTransportProtocol(absl::string_view("tls")));
   EXPECT_CALL(cb_, continueFilterChain(true));
   file_event_callback_(Event::FileReadyType::Read);
@@ -161,7 +164,9 @@ TEST_F(TlsInspectorTest, MultipleReads) {
 
   bool got_continue = false;
   EXPECT_CALL(socket_, setRequestedServerName(Eq(servername)));
-  EXPECT_CALL(socket_, setRequestedApplicationProtocols(alpn_protos));
+// Not valid for ALPN "istio" application protocol hack for openssl
+  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(2);
+//  EXPECT_CALL(socket_, setRequestedApplicationProtocols(alpn_protos));
   EXPECT_CALL(socket_, setDetectedTransportProtocol(absl::string_view("tls")));
   EXPECT_CALL(cb_, continueFilterChain(true)).WillOnce(InvokeWithoutArgs([&got_continue]() {
     got_continue = true;
@@ -187,7 +192,8 @@ TEST_F(TlsInspectorTest, NoExtensions) {
             return Api::SysCallSizeResult{ssize_t(client_hello.size()), 0};
           }));
   EXPECT_CALL(socket_, setRequestedServerName(_)).Times(0);
-  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(0);
+// 0 times not valid for ALPN "istio" application protocol hack for openssl
+  EXPECT_CALL(socket_, setRequestedApplicationProtocols(_)).Times(1);
   EXPECT_CALL(socket_, setDetectedTransportProtocol(absl::string_view("tls")));
   EXPECT_CALL(cb_, continueFilterChain(true));
   file_event_callback_(Event::FileReadyType::Read);

@@ -126,6 +126,7 @@ std::cerr << "!!!!!!!!!!!!!!!!!! calling cb_->socket().setRequestedApplicationPr
 //  unsigned int num_protos = sizeof(protos);  
 //  protocols.emplace_back(reinterpret_cast<const char*>(protos), 6);
   cb_->socket().setRequestedApplicationProtocols(protocols);
+//  alpn_found_ = true;
 }
 
 void Filter::onServername(absl::string_view name) {
@@ -138,7 +139,6 @@ std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onServername !! " << name << " \n";
     config_->stats().sni_not_found_.inc();
   }
   clienthello_success_ = true;
-std::cerr << "!!!!!!!!!!!!!!!!!! not setting protocol to istio \n";
 //  std::vector<absl::string_view> protocols;
 //  protocols.at(0) = "istio";
 //  cb_->socket().setRequestedApplicationProtocols(protocols);
