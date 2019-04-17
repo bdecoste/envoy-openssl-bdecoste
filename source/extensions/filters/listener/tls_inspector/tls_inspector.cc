@@ -41,8 +41,10 @@ std::cerr << "!!!!!!!!!!!!!!!!! Config::Config \n";
   Envoy::Extensions::ListenerFilters::TlsInspector::set_certificate_cb(ssl_ctx_.get());
 
   auto tlsext_servername_cb = +[](SSL* ssl, int* out_alert, void* arg) -> int {
+std::cerr << "!!!!!!!!!!!!!!!!!!!! servername_cb \n";	  
     Filter* filter = static_cast<Filter*>(SSL_get_app_data(ssl));
     absl::string_view servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    filter->onCert();
     filter->onServername(servername);
 
     return Envoy::Extensions::ListenerFilters::TlsInspector::getServernameCallbackReturn(out_alert);
@@ -51,12 +53,23 @@ std::cerr << "!!!!!!!!!!!!!!!!! Config::Config \n";
 
   auto alpn_cb = [](SSL* ssl, const unsigned char** out, unsigned char* outlen,
                     const unsigned char* in, unsigned int inlen, void* arg) -> int {
+std::cerr << "!!!!!!!!!!!!!!!!!!!! alpn_cb \n";
     Filter* filter = static_cast<Filter*>(SSL_get_app_data(ssl));
     filter->onALPN(in, inlen);
 
     return SSL_TLSEXT_ERR_OK;
   };
   SSL_CTX_set_alpn_select_cb(ssl_ctx_.get(), alpn_cb, nullptr);
+
+  auto cert_cb = [](SSL* ssl, void* arg) -> int {
+std::cerr << "!!!!!!!!!!!!!!!!!!!! cert_cb \n";	  
+//    Filter* filter = static_cast<Filter*>(SSL_get_app_data(ssl));
+//    filter->onCert();    
+
+    return SSL_TLSEXT_ERR_OK;
+  };
+  SSL_CTX_set_cert_cb(ssl_ctx_.get(), cert_cb, nullptr);
+
 }
 
 bssl::UniquePtr<SSL> Config::newSsl() { return bssl::UniquePtr<SSL>{SSL_new(ssl_ctx_.get())}; }
@@ -102,8 +115,22 @@ std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onALPN \n";
   alpn_found_ = true;
 }
 
+void Filter::onCert() {
+  std::cerr << "!!!!!!!!!!!!!!!!!!!! tls_inspector onCert \n";
+std::cerr << "!!!!!!!!!!!!!!!!!! calling cb_->socket().setRequestedApplicationProtocols alpn_found_ \n"; 
+  std::vector<absl::string_view> protocols;
+  protocols.emplace_back("istio");
+//  unsigned char protos[] = {
+//     5, 'i', 's', 't', 'i', 'o'
+//  };
+//  unsigned int num_protos = sizeof(protos);  
+//  protocols.emplace_back(reinterpret_cast<const char*>(protos), 6);
+  cb_->socket().setRequestedApplicationProtocols(protocols);
+  alpn_found_ = true;
+}
+
 void Filter::onServername(absl::string_view name) {
-std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onServername " << name << " \n";	
+std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onServername !! " << name << " \n";	
   if (!name.empty()) {
     config_->stats().sni_found_.inc();
     cb_->socket().setRequestedServerName(name);
@@ -112,6 +139,22 @@ std::cerr << "!!!!!!!!!!!!!!!! tls_inspector onServername " << name << " \n";
     config_->stats().sni_not_found_.inc();
   }
   clienthello_success_ = true;
+std::cerr << "!!!!!!!!!!!!!!!!!! not setting protocol to istio \n";
+//  std::vector<absl::string_view> protocols;
+//  protocols.at(0) = "istio";
+//  cb_->socket().setRequestedApplicationProtocols(protocols);
+
+//  const unsigned char *alpn = NULL;
+//  unsigned int alpnlen = 0;
+//  std::cerr << "!!!!!!!!!!!!!!!! calling SSL_get0_next_proto_negotiated \n";
+//  SSL_get0_next_proto_negotiated(ssl_.get(), &alpn, &alpnlen);
+//std::cerr << "!!!!!!!!!!!!!!!! called SSL_get0_next_proto_negotiated " << alpn << " \n";
+//  if (alpn == NULL) {
+//    std::cerr << "!!!!!!!!!!!!!!!!!! calling SSL_get0_alpn_selected \n";
+//    SSL_get0_alpn_selected(ssl_.get(), &alpn, &alpnlen);
+//std::cerr << "!!!!!!!!!!!!!!!!!! SSL_get0_alpn_selected " << alpn << " " << alpnlen << " \n";
+//  }
+  
 }
 
 void Filter::onRead() {
@@ -194,6 +237,7 @@ std::cerr << "!!!!!!!!!!!!!! SSL_ERROR_SSL " << clienthello_success_ << " \n";
       } else {
         config_->stats().alpn_not_found_.inc();
       }
+std::cerr << "!!!!!!!!!!!!!!!!!!!! setDetectedTransportProtocol Tls \n";      
       cb_->socket().setDetectedTransportProtocol(TransportSockets::TransportSocketNames::get().Tls);
     } else {
       config_->stats().tls_not_found_.inc();

@@ -69,6 +69,7 @@ public:
   // Network::ListenerFilter
   Network::FilterStatus onAccept(Network::ListenerFilterCallbacks& cb) override;
   void onALPN(const unsigned char* data, unsigned int len);
+  void onCert();
 
 private:
   void parseClientHello(const void* data, size_t len);
