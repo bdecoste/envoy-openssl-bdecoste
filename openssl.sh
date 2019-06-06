@@ -199,8 +199,8 @@ replace_text
 FILE="test/integration/BUILD"
 DELETE_START_PATTERN="name = \"hotrestart_test\","
 DELETE_STOP_PATTERN="envoy_sh_test("
-START_OFFSET="-1"
-ADD_TEXT="envoy_sh_test("
+START_OFFSET=""
+ADD_TEXT=""
 replace_text
 
 sed -i 's|ENVOY_SSL_VERSION|"OpenSSL_1_1_1"|g' ${SOURCE_DIR}/source/common/common/version.cc
