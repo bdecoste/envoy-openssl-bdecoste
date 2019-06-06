@@ -199,7 +199,7 @@ replace_text
 FILE="test/integration/BUILD"
 DELETE_START_PATTERN="name = \"hotrestart_test\","
 DELETE_STOP_PATTERN="envoy_sh_test("
-START_OFFSET=""
+START_OFFSET="0"
 ADD_TEXT=""
 replace_text
 
