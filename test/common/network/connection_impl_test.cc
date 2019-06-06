@@ -993,41 +993,6 @@ TEST_P(ConnectionImplTest, FlushWriteCloseTest) {
   dispatcher_->run(Event::Dispatcher::RunType::Block);
 }
 
-// Test that a FlushWrite close will create and enable a timer which closes the connection when
-// triggered.
-TEST_P(ConnectionImplTest, FlushWriteCloseTimeoutTest) {
-  ConnectionMocks mocks = createConnectionMocks();
-  IoHandlePtr io_handle = std::make_unique<IoSocketHandleImpl>(0);
-  auto server_connection = std::make_unique<Network::ConnectionImpl>(
-      *mocks.dispatcher,
-      std::make_unique<ConnectionSocketImpl>(std::move(io_handle), nullptr, nullptr),
-      std::move(mocks.transport_socket), true);
-
-  InSequence s1;
-
-  // Enable delayed connection close processing by setting a non-zero timeout value. The actual
-  // value (> 0) doesn't matter since the callback is triggered below.
-  server_connection->setDelayedCloseTimeout(std::chrono::milliseconds(100));
-
-  NiceMockConnectionStats stats;
-  server_connection->setConnectionStats(stats.toBufferStats());
-
-  Buffer::OwnedImpl data("data");
-  server_connection->write(data, false);
-
-  // Data is pending in the write buffer, which will trigger the FlushWrite close to go into delayed
-  // close processing.
-  EXPECT_CALL(*mocks.timer, enableTimer(_)).Times(1);
-  server_connection->close(ConnectionCloseType::FlushWrite);
-
-  EXPECT_CALL(stats.delayed_close_timeouts_, inc()).Times(1);
-  // Since the callback is being invoked manually, disableTimer() will be called when the connection
-  // is closed by the callback.
-  EXPECT_CALL(*mocks.timer, disableTimer()).Times(1);
-  // Issue the delayed close callback to ensure connection is closed.
-  mocks.timer->callback_();
-}
-
 // Test that a FlushWriteAndDelay close causes Envoy to flush the write and wait for the client/peer
 // to close (until a configured timeout which is not expected to trigger in this test).
 TEST_P(ConnectionImplTest, FlushWriteAndDelayCloseTest) {

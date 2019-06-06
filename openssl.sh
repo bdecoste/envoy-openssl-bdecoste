@@ -42,7 +42,6 @@ rm -rf ${SOURCE_DIR}/test/extensions/filters/listener/tls_inspector
 /usr/bin/cp -rf test/extensions/transport_sockets/tls ${SOURCE_DIR}/test/extensions/transport_sockets/
 /usr/bin/cp -rf test/extensions/filters/listener/tls_inspector ${SOURCE_DIR}/test/extensions/filters/listener/
 /usr/bin/cp -rf test/common/network/* ${SOURCE_DIR}/test/common/network/
-/usr/bin/cp -rf test/integration/* ${SOURCE_DIR}/test/integration/
 /usr/bin/cp -rf source/common/network/connection_impl.cc ${SOURCE_DIR}/source/common/network
 
 /usr/bin/cp openssl.BUILD ${SOURCE_DIR}
@@ -195,6 +194,13 @@ DELETE_START_PATTERN="copts = envoy_select_boringssl("
 DELETE_STOP_PATTERN="),"
 START_OFFSET="0"
 ADD_TEXT=""
+replace_text
+
+FILE="test/integration/BUILD"
+DELETE_START_PATTERN="name = \"hotrestart_test\","
+DELETE_STOP_PATTERN="envoy_sh_test("
+START_OFFSET="-1"
+ADD_TEXT="envoy_sh_test("
 replace_text
 
 sed -i 's|ENVOY_SSL_VERSION|"OpenSSL_1_1_1"|g' ${SOURCE_DIR}/source/common/common/version.cc
